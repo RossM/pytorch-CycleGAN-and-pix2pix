@@ -4,7 +4,8 @@ from torch.nn import init
 import functools
 from torch.nn.modules.instancenorm import LazyInstanceNorm1d
 from torch.optim import lr_scheduler
-
+from einops import rearrange, reduce, asnumpy, parse_shape
+from einops.layers.torch import Rearrange, Reduce
 
 ###############################################################################
 # Helper Functions
@@ -472,7 +473,7 @@ class UnetGenerator(nn.Module):
                                                  submodule=unet_block, outermost=True, norm_layer=norm_layer,
                                                  last=last)  # add the outermost layer
             model += [unet_block]
-        model += [nn.Conv2d(ngf, output_nc, 1), nn.Tanh()]
+        model += [Painter2d(ngf, output_nc, 1), nn.Tanh()]
         self.model = nn.Sequential(*model)
             
     def forward(self, input):
@@ -607,6 +608,12 @@ class NLayerDiscriminator(nn.Module):
         """Standard forward."""
         return self.model(input)
 
+class Painter2d(nn.Conv2d):
+    def forward(self, inputs)
+        L = super().forward(inputs)
+        R, G, B, A = rearrange(L, 'b (i split) x y -> split b i x y', split=4)
+        RGB = torch.stack((R, G, B))
+        return einsum('c b i x y, b i x y -> b c x y', RGB, torch.softmax(A))
 
 class PixelDiscriminator(nn.Module):
     """Defines a 1x1 PatchGAN discriminator (pixelGAN)"""
