@@ -609,7 +609,7 @@ class NLayerDiscriminator(nn.Module):
         return self.model(input)
 
 class Painter2d(nn.Conv2d):
-    def forward(self, inputs)
+    def forward(self, inputs):
         L = super().forward(inputs)
         R, G, B, A = rearrange(L, 'b (i split) x y -> split b i x y', split=4)
         RGB = torch.stack((R, G, B))
