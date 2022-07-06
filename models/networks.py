@@ -453,7 +453,6 @@ class UnetGenerator(nn.Module):
         """
         super(UnetGenerator, self).__init__()
         model = []
-        model += [nn.Conv2d(input_nc, ngf, 1)]
         for block_num in range(1, n_blocks):
             # construct unet structure
             unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=None, norm_layer=norm_layer, innermost=True)  # add the innermost layer
@@ -463,9 +462,11 @@ class UnetGenerator(nn.Module):
             unet_block = UnetSkipConnectionBlock(ngf * 4, ngf * 8, input_nc=None, submodule=unet_block, norm_layer=norm_layer)
             unet_block = UnetSkipConnectionBlock(ngf * 2, ngf * 4, input_nc=None, submodule=unet_block, norm_layer=norm_layer)
             unet_block = UnetSkipConnectionBlock(ngf, ngf * 2, input_nc=None, submodule=unet_block, norm_layer=norm_layer)
-            unet_block = UnetSkipConnectionBlock(ngf, ngf, input_nc=ngf, submodule=unet_block, outermost=True, norm_layer=norm_layer)  # add the outermost layer
+            unet_block = UnetSkipConnectionBlock(output_nc if block_num == num_blocks else ngf, 
+                                                 ngf, 
+                                                 input_nc=input_nc if block_num == 1 else ngf, 
+                                                 submodule=unet_block, outermost=True, norm_layer=norm_layer)  # add the outermost layer
             model.append(unet_block)
-        model += [nn.Conv2d(ngf, output_nc, 1)]
         self.model = nn.Sequential(*model)
             
     def forward(self, input):
