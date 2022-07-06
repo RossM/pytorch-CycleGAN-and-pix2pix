@@ -554,6 +554,12 @@ class UnetSkipConnectionBlock(nn.Module):
         else:   # add skip connections
             return torch.cat([x, self.model(x)], 1)
 
+class Painter2d(nn.Conv2d):
+    def forward(self, inputs):
+        L = super().forward(inputs)
+        R, G, B, A = rearrange(L, 'b (split i) x y -> split b i x y', split=4)
+        RGB = torch.stack((R, G, B))
+        return torch.einsum('c b i x y, b i x y -> b c x y', RGB, torch.softmax(A, 1))
 
 class NLayerDiscriminator(nn.Module):
     """Defines a PatchGAN discriminator"""
@@ -607,13 +613,6 @@ class NLayerDiscriminator(nn.Module):
     def forward(self, input):
         """Standard forward."""
         return self.model(input)
-
-class Painter2d(nn.Conv2d):
-    def forward(self, inputs):
-        L = super().forward(inputs)
-        R, G, B, A = rearrange(L, 'b (i split) x y -> split b i x y', split=4)
-        RGB = torch.stack((R, G, B))
-        return torch.einsum('c b i x y, b i x y -> b c x y', RGB, torch.softmax(A, 1))
 
 class PixelDiscriminator(nn.Module):
     """Defines a 1x1 PatchGAN discriminator (pixelGAN)"""
