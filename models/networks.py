@@ -465,7 +465,7 @@ class UnetGenerator(nn.Module):
             unet_block = UnetSkipConnectionBlock(output_nc if block_num == n_blocks else ngf, 
                                                  ngf, 
                                                  input_nc=input_nc if block_num == 1 else ngf, 
-                                                 submodule=unet_block, outermost=True, norm_layer=norm_layer)  # add the outermost layer
+                                                 submodule=unet_block, outermost=block_num == n_blocks, norm_layer=norm_layer)  # add the outermost layer
             model.append(unet_block)
         self.model = nn.Sequential(*model)
             
