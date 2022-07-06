@@ -6,7 +6,7 @@ from torch.nn.modules.instancenorm import LazyInstanceNorm1d
 from torch.optim import lr_scheduler
 from einops import rearrange, reduce, asnumpy, parse_shape
 from einops.layers.torch import Rearrange, Reduce
-from torchvision.models import ResNet, Bottleneck
+from torchvision.models import resnet18
 
 ###############################################################################
 # Helper Functions
@@ -202,7 +202,7 @@ def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal'
     elif netD == 'deep':  # more options
         net = NLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer, n_layers2=n_layers2_D, padding_mode=padding_mode)
     elif netD == 'resnet':
-        net = ResNet(Bottleneck, [1, 2, 2, 2], num_classes = 1, norm_layer = Hardswish())
+        net = resnet18(pretrained=False)
     elif netD == 'pixel':     # classify if each pixel is real or fake
         net = PixelDiscriminator(input_nc, ndf, norm_layer=norm_layer)
     else:
