@@ -453,7 +453,7 @@ class UnetGenerator(nn.Module):
         """
         super(UnetGenerator, self).__init__()
         model = []
-        for block_num in range(1, n_blocks):
+        for block_num in range(1, n_blocks + 1):
             # construct unet structure
             unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=None, norm_layer=norm_layer, innermost=True)  # add the innermost layer
             for i in range(num_downs - 5):          # add intermediate layers with ngf * 8 filters
@@ -570,7 +570,7 @@ class NLayerDiscriminator(nn.Module):
         for n in range(1, n_layers):  # gradually increase the number of filters
             nf_mult_prev = nf_mult
             nf_mult = min(2 ** n, 8)
-            for i in range(1, n_layers2 - 1):
+            for i in range(n_layers2 - 1):
                 sequence += [
                 nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult_prev, kernel_size=kw, stride=1, padding=padw, bias=use_bias),
                 norm_layer(ndf * nf_mult_prev),
