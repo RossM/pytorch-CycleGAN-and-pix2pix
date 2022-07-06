@@ -6,6 +6,7 @@ from torch.nn.modules.instancenorm import LazyInstanceNorm1d
 from torch.optim import lr_scheduler
 from einops import rearrange, reduce, asnumpy, parse_shape
 from einops.layers.torch import Rearrange, Reduce
+from torch.vision import ResNet
 
 ###############################################################################
 # Helper Functions
@@ -200,6 +201,8 @@ def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal'
         net = NLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer, padding_mode=padding_mode)
     elif netD == 'deep':  # more options
         net = NLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer, n_layers2=n_layers2_D, padding_mode=padding_mode)
+    elif netD == 'resnet'
+        net = ResNet(Bottleneck, [1, 2, 2, 2], num_classes = 1, norm_layer = Hardswish())
     elif netD == 'pixel':     # classify if each pixel is real or fake
         net = PixelDiscriminator(input_nc, ndf, norm_layer=norm_layer)
     else:
@@ -613,7 +616,7 @@ class NLayerDiscriminator(nn.Module):
     def forward(self, input):
         """Standard forward."""
         return self.model(input)
-
+    
 class PixelDiscriminator(nn.Module):
     """Defines a 1x1 PatchGAN discriminator (pixelGAN)"""
 
