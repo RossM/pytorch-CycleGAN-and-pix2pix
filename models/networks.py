@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn import init
 import functools
+from torch.nn.modules.instancenorm import LazyInstanceNorm1d
 from torch.optim import lr_scheduler
 
 
@@ -453,7 +454,10 @@ class UnetGenerator(nn.Module):
         """
         super(UnetGenerator, self).__init__()
         model = []
-        for block_num in range(1, n_blocks + 1):
+        model += [nn.Conv2d(input_nc, ngf, 1)]
+        for block_num in range(1, n_blocks+1):
+            first = block_num == 1
+            last = block_num == n_blocks
             # construct unet structure
             unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=None, norm_layer=norm_layer, innermost=True)  # add the innermost layer
             for i in range(num_downs - 5):          # add intermediate layers with ngf * 8 filters
@@ -462,11 +466,13 @@ class UnetGenerator(nn.Module):
             unet_block = UnetSkipConnectionBlock(ngf * 4, ngf * 8, input_nc=None, submodule=unet_block, norm_layer=norm_layer)
             unet_block = UnetSkipConnectionBlock(ngf * 2, ngf * 4, input_nc=None, submodule=unet_block, norm_layer=norm_layer)
             unet_block = UnetSkipConnectionBlock(ngf, ngf * 2, input_nc=None, submodule=unet_block, norm_layer=norm_layer)
-            unet_block = UnetSkipConnectionBlock(output_nc if block_num == n_blocks else ngf, 
+            unet_block = UnetSkipConnectionBlock(ngf, 
                                                  ngf, 
-                                                 input_nc=input_nc if block_num == 1 else ngf, 
-                                                 submodule=unet_block, outermost=block_num == n_blocks, norm_layer=norm_layer)  # add the outermost layer
-            model.append(unet_block)
+                                                 input_nc=ngf, 
+                                                 submodule=unet_block, outermost=True, norm_layer=norm_layer,
+                                                 last=last)  # add the outermost layer
+            model += [unet_block]
+        model += [nn.Conv2d(ngf, output_nc, 1), nn.Tanh()]
         self.model = nn.Sequential(*model)
             
     def forward(self, input):
@@ -481,7 +487,8 @@ class UnetSkipConnectionBlock(nn.Module):
     """
 
     def __init__(self, outer_nc, inner_nc, input_nc=None,
-                 submodule=None, outermost=False, innermost=False, norm_layer=nn.BatchNorm2d, use_dropout=False):
+                 submodule=None, outermost=False, innermost=False, norm_layer=nn.BatchNorm2d, use_dropout=False,
+                 last=False):
         """Construct a Unet submodule with skip connections.
 
         Parameters:
@@ -496,6 +503,7 @@ class UnetSkipConnectionBlock(nn.Module):
         """
         super(UnetSkipConnectionBlock, self).__init__()
         self.outermost = outermost
+        self.last = last
         if type(norm_layer) == functools.partial:
             use_bias = norm_layer.func == nn.InstanceNorm2d
         else:
@@ -512,9 +520,9 @@ class UnetSkipConnectionBlock(nn.Module):
         if outermost:
             upconv = nn.ConvTranspose2d(inner_nc * 2, outer_nc,
                                         kernel_size=4, stride=2,
-                                        padding=1)
+                                        padding=1, bias=use_bias)
             down = [downconv]
-            up = [uprelu, upconv, nn.Tanh()]
+            up = [uprelu, upconv, upnorm]
             model = down + [submodule] + up
         elif innermost:
             upconv = nn.ConvTranspose2d(inner_nc, outer_nc,
@@ -538,8 +546,10 @@ class UnetSkipConnectionBlock(nn.Module):
         self.model = nn.Sequential(*model)
 
     def forward(self, x):
-        if self.outermost:
+        if self.last:
             return self.model(x)
+        elif self.outermost:
+            return self.model(x) + x
         else:   # add skip connections
             return torch.cat([x, self.model(x)], 1)
 
@@ -570,7 +580,7 @@ class NLayerDiscriminator(nn.Module):
         for n in range(1, n_layers):  # gradually increase the number of filters
             nf_mult_prev = nf_mult
             nf_mult = min(2 ** n, 8)
-            for i in range(n_layers2 - 1):
+            for i in range(1, n_layers2 - 1):
                 sequence += [
                 nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult_prev, kernel_size=kw, stride=1, padding=padw, bias=use_bias),
                 norm_layer(ndf * nf_mult_prev),
