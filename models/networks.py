@@ -613,7 +613,7 @@ class Painter2d(nn.Conv2d):
         L = super().forward(inputs)
         R, G, B, A = rearrange(L, 'b (i split) x y -> split b i x y', split=4)
         RGB = torch.stack((R, G, B))
-        return torch.einsum('c b i x y, b i x y -> b c x y', RGB, torch.softmax(A))
+        return torch.einsum('c b i x y, b i x y -> b c x y', RGB, torch.softmax(A, 1))
 
 class PixelDiscriminator(nn.Module):
     """Defines a 1x1 PatchGAN discriminator (pixelGAN)"""
