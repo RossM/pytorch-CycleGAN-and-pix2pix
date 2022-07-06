@@ -454,7 +454,7 @@ class UnetGenerator(nn.Module):
         """
         super(UnetGenerator, self).__init__()
         model = []
-        model += [nn.Conv2d(input_nc, ngf, 1)]
+        model += [nn.Conv2d(input_nc, ngf, 1), nn.Hardswish(True)]
         for block_num in range(1, n_blocks+1):
             first = block_num == 1
             last = block_num == n_blocks
