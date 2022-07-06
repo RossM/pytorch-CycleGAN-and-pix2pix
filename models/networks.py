@@ -453,7 +453,7 @@ class UnetGenerator(nn.Module):
         """
         super(UnetGenerator, self).__init__()
         model = []
-        model.append(nn.Linear(input_nc, ngf))
+        model += [nn.Conv1d(input_nc, ngf))]
         for block_num in range(1, n_blocks):
             # construct unet structure
             unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=None, norm_layer=norm_layer, innermost=True)  # add the innermost layer
@@ -465,7 +465,7 @@ class UnetGenerator(nn.Module):
             unet_block = UnetSkipConnectionBlock(ngf, ngf * 2, input_nc=None, submodule=unet_block, norm_layer=norm_layer)
             unet_block = UnetSkipConnectionBlock(ngf, ngf, input_nc=ngf, submodule=unet_block, outermost=True, norm_layer=norm_layer)  # add the outermost layer
             model.append(unet_block)
-        model.append(nn.Linear(ngf, output_nc))
+        model += [nn.Conv1d(ngf, output_nc))]
         self.model = nn.Sequential(*model)
             
     def forward(self, input):
@@ -505,7 +505,7 @@ class UnetSkipConnectionBlock(nn.Module):
                              stride=2, padding=1, bias=use_bias)
         downrelu = nn.Hardswish(True)
         downnorm = norm_layer(inner_nc)
-        uprelu = nn.ReLU(True)
+        uprelu = nn.Hardswish(True)
         upnorm = norm_layer(outer_nc)
 
         if outermost:
