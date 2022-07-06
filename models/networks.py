@@ -501,7 +501,7 @@ class UnetSkipConnectionBlock(nn.Module):
             input_nc = outer_nc
         downconv = nn.Conv2d(input_nc, inner_nc, kernel_size=4,
                              stride=2, padding=1, bias=use_bias)
-        downrelu = nn.LeakyReLU(0.2, True)
+        downrelu = nn.Hardswish(True)
         downnorm = norm_layer(inner_nc)
         uprelu = nn.ReLU(True)
         upnorm = norm_layer(outer_nc)
@@ -544,7 +544,7 @@ class UnetSkipConnectionBlock(nn.Module):
 class NLayerDiscriminator(nn.Module):
     """Defines a PatchGAN discriminator"""
 
-    def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.BatchNorm2d):
+    def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.BatchNorm2d, n_layers2=1):
         """Construct a PatchGAN discriminator
 
         Parameters:
@@ -561,16 +561,22 @@ class NLayerDiscriminator(nn.Module):
 
         kw = 4
         padw = 1
-        sequence = [nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw), nn.LeakyReLU(0.2, True)]
+        sequence = [nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw), nn.Hardswish(True)]
         nf_mult = 1
         nf_mult_prev = 1
         for n in range(1, n_layers):  # gradually increase the number of filters
             nf_mult_prev = nf_mult
             nf_mult = min(2 ** n, 8)
+            for i in range(1, n_layers2):
+                sequence += [
+                nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult_prev, kernel_size=kw, stride=1, padding=padw, bias=use_bias),
+                norm_layer(ndf * nf_mult),
+                nn.Hardswish(True)
+                ]
             sequence += [
                 nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=2, padding=padw, bias=use_bias),
                 norm_layer(ndf * nf_mult),
-                nn.LeakyReLU(0.2, True)
+                nn.Hardswish(True)
             ]
 
         nf_mult_prev = nf_mult
@@ -578,7 +584,7 @@ class NLayerDiscriminator(nn.Module):
         sequence += [
             nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=1, padding=padw, bias=use_bias),
             norm_layer(ndf * nf_mult),
-            nn.LeakyReLU(0.2, True)
+            nn.Hardswish(True)
         ]
 
         sequence += [nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw)]  # output 1 channel prediction map
@@ -608,10 +614,10 @@ class PixelDiscriminator(nn.Module):
 
         self.net = [
             nn.Conv2d(input_nc, ndf, kernel_size=1, stride=1, padding=0),
-            nn.LeakyReLU(0.2, True),
+            nn.Hardswish(True),
             nn.Conv2d(ndf, ndf * 2, kernel_size=1, stride=1, padding=0, bias=use_bias),
             norm_layer(ndf * 2),
-            nn.LeakyReLU(0.2, True),
+            nn.Hardswish(True),
             nn.Conv2d(ndf * 2, 1, kernel_size=1, stride=1, padding=0, bias=use_bias)]
 
         self.net = nn.Sequential(*self.net)
