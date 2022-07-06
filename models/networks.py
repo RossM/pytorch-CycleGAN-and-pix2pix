@@ -473,7 +473,7 @@ class UnetGenerator(nn.Module):
                                                  submodule=unet_block, outermost=True, norm_layer=norm_layer,
                                                  last=last)  # add the outermost layer
             model += [unet_block]
-        model += [Painter2d(ngf, output_nc, 1), nn.Tanh()]
+        model += [Painter2d(ngf, ngf, 1), nn.Tanh()]
         self.model = nn.Sequential(*model)
             
     def forward(self, input):
