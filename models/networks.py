@@ -6,7 +6,7 @@ from torch.nn.modules.instancenorm import LazyInstanceNorm1d
 from torch.optim import lr_scheduler
 from einops import rearrange, reduce, asnumpy, parse_shape
 from einops.layers.torch import Rearrange, Reduce
-from torch.vision import ResNet
+from torchvision.models import ResNet
 
 ###############################################################################
 # Helper Functions
