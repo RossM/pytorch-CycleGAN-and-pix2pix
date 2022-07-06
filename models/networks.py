@@ -118,7 +118,7 @@ def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=[]):
     return net
 
 
-def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, init_type='normal', init_gain=0.02, gpu_ids=[], n_unet_blocks=1):
+def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, init_type='normal', init_gain=0.02, gpu_ids=[], n_unet_blocks=1, padding_mode="reflect"):
     """Create a generator
 
     Parameters:
@@ -153,15 +153,15 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
     elif netG == 'resnet_6blocks':
         net = ResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=6)
     elif netG == 'unet_128':
-        net = UnetGenerator(input_nc, output_nc, 7, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=n_unet_blocks)
+        net = UnetGenerator(input_nc, output_nc, 7, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=n_unet_blocks, padding_mode=padding_mode)
     elif netG == 'unet_256':
-        net = UnetGenerator(input_nc, output_nc, 8, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=n_unet_blocks)
+        net = UnetGenerator(input_nc, output_nc, 8, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=n_unet_blocks, padding_mode=padding_mode)
     else:
         raise NotImplementedError('Generator model name [%s] is not recognized' % netG)
     return init_net(net, init_type, init_gain, gpu_ids)
 
 
-def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal', init_gain=0.02, gpu_ids=[], n_layers2_D=12):
+def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal', init_gain=0.02, gpu_ids=[], n_layers2_D=12, padding_mode="reflect"):
     """Create a discriminator
 
     Parameters:
@@ -195,11 +195,11 @@ def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal'
     norm_layer = get_norm_layer(norm_type=norm)
 
     if netD == 'basic':  # default PatchGAN classifier
-        net = NLayerDiscriminator(input_nc, ndf, n_layers=3, norm_layer=norm_layer)
+        net = NLayerDiscriminator(input_nc, ndf, n_layers=3, norm_layer=norm_layer, padding_mode=padding_mode)
     elif netD == 'n_layers':  # more options
-        net = NLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer)
+        net = NLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer, padding_mode=padding_mode)
     elif netD == 'deep':  # more options
-        net = NLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer, n_layers2=n_layers2_D)
+        net = NLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer, n_layers2=n_layers2_D, padding_mode=padding_mode)
     elif netD == 'pixel':     # classify if each pixel is real or fake
         net = PixelDiscriminator(input_nc, ndf, norm_layer=norm_layer)
     else:
@@ -440,7 +440,7 @@ class ResnetBlock(nn.Module):
 class UnetGenerator(nn.Module):
     """Create a Unet-based generator"""
 
-    def __init__(self, input_nc, output_nc, num_downs, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False, n_blocks=1):
+    def __init__(self, input_nc, output_nc, num_downs, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False, n_blocks=1, padding_mode="reflect"):
         """Construct a Unet generator
         Parameters:
             input_nc (int)  -- the number of channels in input images
@@ -455,25 +455,25 @@ class UnetGenerator(nn.Module):
         """
         super(UnetGenerator, self).__init__()
         model = []
-        model += [nn.Conv2d(input_nc, ngf, 1), nn.Hardswish(True)]
+        model += [nn.Conv2d(input_nc, ngf, 1, padding_mode=padding_mode), nn.Hardswish(True)]
         for block_num in range(1, n_blocks+1):
             first = block_num == 1
             last = block_num == n_blocks
             # construct unet structure
-            unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=None, norm_layer=norm_layer, innermost=True)  # add the innermost layer
+            unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=None, norm_layer=norm_layer, innermost=True, padding_mode=padding_mode)  # add the innermost layer
             for i in range(num_downs - 5):          # add intermediate layers with ngf * 8 filters
-                unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=unet_block, norm_layer=norm_layer, use_dropout=use_dropout)
+                unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=unet_block, norm_layer=norm_layer, use_dropout=use_dropout, padding_mode=padding_mode)
             # gradually reduce the number of filters from ngf * 8 to ngf
-            unet_block = UnetSkipConnectionBlock(ngf * 4, ngf * 8, input_nc=None, submodule=unet_block, norm_layer=norm_layer)
-            unet_block = UnetSkipConnectionBlock(ngf * 2, ngf * 4, input_nc=None, submodule=unet_block, norm_layer=norm_layer)
-            unet_block = UnetSkipConnectionBlock(ngf, ngf * 2, input_nc=None, submodule=unet_block, norm_layer=norm_layer)
+            unet_block = UnetSkipConnectionBlock(ngf * 4, ngf * 8, input_nc=None, submodule=unet_block, norm_layer=norm_layer, padding_mode=padding_mode)
+            unet_block = UnetSkipConnectionBlock(ngf * 2, ngf * 4, input_nc=None, submodule=unet_block, norm_layer=norm_layer, padding_mode=padding_mode)
+            unet_block = UnetSkipConnectionBlock(ngf, ngf * 2, input_nc=None, submodule=unet_block, norm_layer=norm_layer, padding_mode=padding_mode)
             unet_block = UnetSkipConnectionBlock(ngf, 
                                                  ngf, 
                                                  input_nc=ngf, 
                                                  submodule=unet_block, outermost=True, norm_layer=norm_layer,
-                                                 last=last)  # add the outermost layer
+                                                 last=last, padding_mode=padding_mode)  # add the outermost layer
             model += [unet_block]
-        model += [Painter2d(ngf, ngf * 2, 1), nn.Tanh()]
+        model += [Painter2d(ngf, ngf * 2, 1, padding_mode=padding_mode), nn.Tanh()]
         self.model = nn.Sequential(*model)
             
     def forward(self, input):
@@ -489,7 +489,7 @@ class UnetSkipConnectionBlock(nn.Module):
 
     def __init__(self, outer_nc, inner_nc, input_nc=None,
                  submodule=None, outermost=False, innermost=False, norm_layer=nn.BatchNorm2d, use_dropout=False,
-                 last=False):
+                 last=False, padding_mode="reflect"):
         """Construct a Unet submodule with skip connections.
 
         Parameters:
@@ -512,7 +512,7 @@ class UnetSkipConnectionBlock(nn.Module):
         if input_nc is None:
             input_nc = outer_nc
         downconv = nn.Conv2d(input_nc, inner_nc, kernel_size=4,
-                             stride=2, padding=1, bias=use_bias)
+                             stride=2, padding=1, bias=use_bias, padding_mode=padding_mode)
         downrelu = nn.Hardswish(True)
         downnorm = norm_layer(inner_nc)
         uprelu = nn.Hardswish(True)
@@ -521,21 +521,21 @@ class UnetSkipConnectionBlock(nn.Module):
         if outermost:
             upconv = nn.ConvTranspose2d(inner_nc * 2, outer_nc,
                                         kernel_size=4, stride=2,
-                                        padding=1, bias=use_bias)
+                                        padding=1, bias=use_bias, padding_mode=padding_mode)
             down = [downconv]
             up = [uprelu, upconv, upnorm]
             model = down + [submodule] + up
         elif innermost:
             upconv = nn.ConvTranspose2d(inner_nc, outer_nc,
                                         kernel_size=4, stride=2,
-                                        padding=1, bias=use_bias)
+                                        padding=1, bias=use_bias, padding_mode=padding_mode)
             down = [downrelu, downconv]
             up = [uprelu, upconv, upnorm]
             model = down + up
         else:
             upconv = nn.ConvTranspose2d(inner_nc * 2, outer_nc,
                                         kernel_size=4, stride=2,
-                                        padding=1, bias=use_bias)
+                                        padding=1, bias=use_bias, padding_mode=padding_mode)
             down = [downrelu, downconv, downnorm]
             up = [uprelu, upconv, upnorm]
 
@@ -558,7 +558,7 @@ class UnetSkipConnectionBlock(nn.Module):
 class NLayerDiscriminator(nn.Module):
     """Defines a PatchGAN discriminator"""
 
-    def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.BatchNorm2d, n_layers2=1):
+    def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.BatchNorm2d, n_layers2=1, padding_mode="reflect"):
         """Construct a PatchGAN discriminator
 
         Parameters:
@@ -575,7 +575,7 @@ class NLayerDiscriminator(nn.Module):
 
         kw = 4
         padw = 1
-        sequence = [nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw), nn.Hardswish(True)]
+        sequence = [nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw, padding_mode=padding_mode), nn.Hardswish(True)]
         nf_mult = 1
         nf_mult_prev = 1
         for n in range(1, n_layers):  # gradually increase the number of filters
@@ -583,12 +583,12 @@ class NLayerDiscriminator(nn.Module):
             nf_mult = min(2 ** n, 8)
             for i in range(1, n_layers2 - 1):
                 sequence += [
-                nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult_prev, kernel_size=kw, stride=1, padding=padw, bias=use_bias),
+                nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult_prev, kernel_size=kw, stride=1, padding=padw, bias=use_bias, padding_mode=padding_mode),
                 norm_layer(ndf * nf_mult_prev),
                 nn.Hardswish(True)
                 ]
             sequence += [
-                nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=2, padding=padw, bias=use_bias),
+                nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=2, padding=padw, bias=use_bias, padding_mode=padding_mode),
                 norm_layer(ndf * nf_mult),
                 nn.Hardswish(True)
             ]
@@ -596,12 +596,12 @@ class NLayerDiscriminator(nn.Module):
         nf_mult_prev = nf_mult
         nf_mult = min(2 ** n_layers, 8)
         sequence += [
-            nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=1, padding=padw, bias=use_bias),
+            nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=1, padding=padw, bias=use_bias, padding_mode=padding_mode),
             norm_layer(ndf * nf_mult),
             nn.Hardswish(True)
         ]
 
-        sequence += [nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw)]  # output 1 channel prediction map
+        sequence += [nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw, padding_mode=padding_mode)]  # output 1 channel prediction map
         self.model = nn.Sequential(*sequence)
 
     def forward(self, input):
