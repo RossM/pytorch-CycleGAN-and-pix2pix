@@ -83,9 +83,12 @@ class Pix2PixModel(BaseModel):
         self.real_B = input['B' if AtoB else 'A'].to(self.device)
         self.image_paths = input['A_paths' if AtoB else 'B_paths']
 
-    def forward(self):
+    def forward(self, time = None):
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
-        self.fake_B = self.netG(self.real_A)  # G(A)
+        if time != None:
+            self.fake_B = self.netG(self.real_A, time)  # G(A)
+        else:
+            self.fake_B = self.netG(self.real_A)  # G(A)
 
     def backward_D(self):
         """Calculate GAN loss for the discriminator"""
@@ -113,8 +116,8 @@ class Pix2PixModel(BaseModel):
         self.loss_G = self.loss_G_GAN + self.loss_G_L1
         self.loss_G.backward()
 
-    def optimize_parameters(self):
-        self.forward()                   # compute fake images: G(A)
+    def optimize_parameters(self, time=None):
+        self.forward(time)                   # compute fake images: G(A)
         # update D
         self.set_requires_grad(self.netD, True)  # enable backprop for D
         self.optimizer_D.zero_grad()     # set D's gradients to zero

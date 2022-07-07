@@ -7,6 +7,7 @@ from torch.optim import lr_scheduler
 from einops import rearrange, reduce, asnumpy, parse_shape
 from einops.layers.torch import Rearrange, Reduce
 from realesrgan.archs.discriminator_arch import UNetDiscriminatorSN
+import denoising_diffusion_pytorch as dd
 
 ###############################################################################
 # Helper Functions
@@ -157,6 +158,8 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
         net = UnetGenerator(input_nc, output_nc, 7, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=n_unet_blocks, padding_mode=padding_mode)
     elif netG == 'unet_256':
         net = UnetGenerator(input_nc, output_nc, 8, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=n_unet_blocks, padding_mode=padding_mode)
+    elif netG == 'dd':
+        net = dd.Unet(dim = 64, resnet_block_groups=8)
     else:
         raise NotImplementedError('Generator model name [%s] is not recognized' % netG)
     return init_net(net, init_type, init_gain, gpu_ids)
