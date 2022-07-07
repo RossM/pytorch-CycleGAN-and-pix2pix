@@ -6,7 +6,7 @@ from torch.nn.modules.instancenorm import LazyInstanceNorm1d
 from torch.optim import lr_scheduler
 from einops import rearrange, reduce, asnumpy, parse_shape
 from einops.layers.torch import Rearrange, Reduce
-import realesrgan.archs as ea
+from realesrgan.archs.discriminator_arch import UNetDiscriminatorSN
 
 ###############################################################################
 # Helper Functions
@@ -202,7 +202,7 @@ def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal'
     elif netD == 'deep':  # more options
         net = NLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer, n_layers2=n_layers2_D, padding_mode=padding_mode)
     elif netD == 'realesrgan':
-        net = ea.UNetDiscriminatorSN(num_in_ch=input_nc, num_feat=ndf)
+        net = UNetDiscriminatorSN(num_in_ch=input_nc, num_feat=ndf)
     elif netD == 'pixel':     # classify if each pixel is real or fake
         net = PixelDiscriminator(input_nc, ndf, norm_layer=norm_layer)
     else:
